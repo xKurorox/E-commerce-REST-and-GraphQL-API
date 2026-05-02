@@ -1,6 +1,6 @@
 from app.database import Base
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Integer, Text, DateTime, ForeignKey, Float
+from sqlalchemy import Column, String, Integer, Text, DateTime, ForeignKey, Float, Boolean
 from sqlalchemy.orm import relationship
 
 class User(Base):
@@ -9,6 +9,7 @@ class User(Base):
     name = Column(String, nullable=False)
     email = Column(String, nullable=True, unique=True)
     hashed_password = Column(String, nullable=False)
+    is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     orders = relationship("Order", back_populates="user")
@@ -40,7 +41,7 @@ class Cart(Base):
 class Category(Base):
     __tablename__ = "categories"
     id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
+    name = Column(String, unique=True, nullable=False)
     parent_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     description = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -53,7 +54,7 @@ class Product(Base):
     __tablename__ = "products"
     id = Column(Integer, primary_key=True)
     category_id = Column(Integer, ForeignKey("categories.id"))
-    name = Column(String, nullable=False)
+    name = Column(String, unique=True, nullable=False)
     description = Column(String, nullable=False)
     price = Column(Float, nullable=False)
     stock_quantity = Column(Integer, nullable=True)
