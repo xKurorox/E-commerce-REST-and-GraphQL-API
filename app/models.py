@@ -13,7 +13,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     orders = relationship("Order", back_populates="user")
-    cart = relationship("Cart", back_populates="user")
+    cart = relationship("Cart", back_populates="user", uselist=False)
 
 class Order(Base):
     __tablename__ = "orders"

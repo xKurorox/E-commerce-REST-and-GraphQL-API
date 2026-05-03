@@ -67,3 +67,26 @@ class ProductResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+class CartItemCreate(BaseModel):
+    product_id: int
+    quantity: int
+
+class CartItemUpdate(BaseModel):
+    quantity: int
+
+class CartItemResponse(BaseModel):
+    id: int
+    product_id: int
+    quantity: int
+    created_at: datetime
+    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+class CartResponse(BaseModel):
+    id: int
+    user_id: int
+    cart_items: list[CartItemResponse] = []
+    created_at: datetime
+    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)
