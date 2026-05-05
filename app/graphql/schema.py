@@ -3,6 +3,7 @@ from strawberry.types import Info
 from typing import Optional
 from app.models import Category as DBCategory
 from app.models import Product as DBProduct
+from app.models import Order as DBOrder
 
 @strawberry.type
 class Category:
@@ -20,6 +21,15 @@ class Product:
     stock_quantity: int
     status: str
     category_id: int
+
+@strawberry.type
+class Order:
+    id: int
+    user_id: int
+    total_amount: float
+    status: Optional[str] = "Pending"
+    shipping_address: str
+    payment_status: Optional[str] = "unpaid"
 
 @strawberry.type
 class Query:
@@ -55,4 +65,24 @@ class Query:
         return Product(id=db_product.id, name=db_product.name, description=db_product.description, 
                        price=db_product.price, stock_quantity=db_product.stock_quantity, status=db_product.status, 
                        category_id=db_product.category_id)
-schema = strawberry.Schema(query=Query)
+    
+@strawberry.type
+class Mutation:
+    @strawberry.mutation
+    def update_order_status(self, info: Info, order_id: int, status: str) -> Optional[Order]:
+        db = info.context["db"]
+        db_order = db.query(DBOrder).filter(DBOrder.id == order_id).first()
+        if not db_order:
+            return None
+        db_order.status = status
+        db.commit()
+        db.refresh(db_order)
+        return Order(
+        id=db_order.id,
+        user_id=db_order.user_id,
+        total_amount=db_order.total_amount,
+        status=db_order.status,
+        shipping_address=db_order.shipping_address,
+        payment_status=db_order.payment_status)
+
+schema = strawberry.Schema(query=Query, mutation=Mutation)
