@@ -1,6 +1,8 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
+
+# --- Auth ---
 
 class UserCreate(BaseModel):
     name: str
@@ -17,12 +19,15 @@ class UserResponse(BaseModel):
     email: str
     is_admin: bool
     created_at: datetime
+    # from_attributes=True lets Pydantic read data from SQLAlchemy objects, not just dicts
     model_config = ConfigDict(from_attributes=True)
 
 class Token(BaseModel):
     access_token: str
     token_type: str
-    
+
+# --- Categories ---
+
 class CategoryCreate(BaseModel):
     name: str
     description: str
@@ -40,6 +45,8 @@ class CategoryResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+# --- Products ---
 
 class ProductCreate(BaseModel):
     category_id: int
@@ -68,10 +75,14 @@ class ProductResponse(BaseModel):
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
+# --- Cart ---
+
+# Sent by the client when adding a product to the cart
 class CartItemCreate(BaseModel):
     product_id: int
     quantity: int
 
+# Sent by the client when changing the quantity of an existing cart item
 class CartItemUpdate(BaseModel):
     quantity: int
 
@@ -83,13 +94,16 @@ class CartItemResponse(BaseModel):
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
+# Returns the full cart with all its items nested inside
 class CartResponse(BaseModel):
     id: int
     user_id: int
-    cart_items: list[CartItemResponse] = []
+    cart_items: List[CartItemResponse] = []
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+# --- Orders ---
 
 class OrderItemResponse(BaseModel):
     id: int
@@ -99,6 +113,7 @@ class OrderItemResponse(BaseModel):
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
+# Nested list of all items that belong to this order
 class OrderResponse(BaseModel):
     id: int
     user_id: int
@@ -108,5 +123,5 @@ class OrderResponse(BaseModel):
     payment_status: str
     created_at: datetime
     updated_at: datetime
-    order_items: list[OrderItemResponse] = []
+    order_items: List[OrderItemResponse] = []
     model_config = ConfigDict(from_attributes=True)

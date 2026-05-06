@@ -10,15 +10,19 @@ from app.routes.carts import router as carts_router
 from app.routes.checkout import router as checkout_router
 from app.routes.order import router as order_router
 
-
 app = FastAPI()
+
+# Injects the database session into every GraphQL request via info.context["db"]
 async def get_context(db=Depends(get_db)):
     return {"db": db}
 
+# Wrap the Strawberry schema in a FastAPI router; exposes POST /graphql and GET /graphql (GraphiQL)
 graphql_app = GraphQLRouter(schema, context_getter=get_context)
 
+# Create all database tables if they don't already exist
 Base.metadata.create_all(bind=engine)
 
+# Register all REST routers with their URL prefixes
 app.include_router(products_router, prefix="/products")
 app.include_router(categories_router, prefix="/categories")
 app.include_router(auth_router, prefix="/auth")

@@ -12,12 +12,15 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # One user has many orders
     orders = relationship("Order", back_populates="user")
+    # uselist=False makes this one-to-one so user.cart returns a single object, not a list
     cart = relationship("Cart", back_populates="user", uselist=False)
 
 class Order(Base):
     __tablename__ = "orders"
     id = Column(Integer, primary_key=True)
+    # Foreign key linking this order to the user who placed it
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     total_amount = Column(Float, nullable=True)
     status = Column(String, default="pending")
@@ -26,15 +29,17 @@ class Order(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     user = relationship("User", back_populates="orders")
+    # One order has many line items
     order_items = relationship("OrderItem", back_populates="order")
-
 
 class Cart(Base):
     __tablename__ = "carts"
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index= True)
+    # Foreign key linking this cart to its owner
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # One cart has many cart items
     cart_items = relationship("CartItem", back_populates="cart")
     user = relationship("User", back_populates="cart")
 
@@ -42,12 +47,15 @@ class Category(Base):
     __tablename__ = "categories"
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True, nullable=False)
+    # nullable=True allows top-level categories that have no parent
     parent_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     description = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     products = relationship("Product", back_populates="category")
+    # Self-referential relationship for nested subcategories
     children = relationship("Category", back_populates="parent")
+    # remote_side=[id] tells SQLAlchemy which side is the "one" in this self-join
     parent = relationship("Category", back_populates="children", remote_side=[id])
 
 class Product(Base):
@@ -62,6 +70,7 @@ class Product(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     category = relationship("Category", back_populates="products")
+    # A product can appear in many carts and many orders via junction tables
     cart_items = relationship("CartItem", back_populates="product")
     order_items = relationship("OrderItem", back_populates="product")
 
@@ -70,6 +79,7 @@ class OrderItem(Base):
     id = Column(Integer, primary_key=True)
     order_id = Column(Integer, ForeignKey("orders.id"), index=True)
     product_id = Column(Integer, ForeignKey("products.id"), index=True)
+    # unit_price stored at purchase time so price changes don't affect historical orders
     unit_price = Column(Float, nullable=False)
     quantity = Column(Integer, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)

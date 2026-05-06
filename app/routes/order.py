@@ -8,15 +8,14 @@ from typing import List
 
 router = APIRouter()
 
-# GET /orders — get all orders for the current user
 @router.get("/", response_model=List[OrderResponse])
 def get_orders(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    orders = user.orders
-    return orders
+    # Load orders via the relationship instead of a separate query
+    return user.orders
 
-# GET /orders/{order_id} — get a single order with its items
 @router.get("/{order_id}", response_model=OrderResponse)
 def get_order(order_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Filter by user_id as well so users can't fetch other people's orders
     order = db.query(Order).filter(Order.id == order_id, Order.user_id == user.id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
