@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from app.models import Product, User, Category
 from app.dependencies import get_current_user
 from typing import List, Optional
+from app.routes.redis_client import redis_client
+import json
 
 router = APIRouter()
 
@@ -28,12 +30,17 @@ def create_products(product: ProductCreate, db: Session = Depends(get_db), curre
     db.add(new_product)
     db.commit()
     db.refresh(new_product)
+    redis_client.delete("products:search=None:category=None:sort=None")
     return new_product
 
 # GET / — get all products (public) with optional query parameters for search, category, and sort
 @router.get("/", response_model=List[ProductResponse])
 def get_products(search: Optional[str] = None, category_id: Optional[int] = None, sort: Optional[str] = None, db: Session = Depends(get_db)):
     query = db.query(Product)
+    cache_key = f"products:search={search}:category={category_id}:sort={sort}"
+    cached = redis_client.get(cache_key)
+    if cached:
+        return [ProductResponse(**p) for p in json.loads(cached)]
     if search:
         query = query.filter(Product.name.ilike(f"%{search}%"))
     if category_id:
@@ -42,14 +49,24 @@ def get_products(search: Optional[str] = None, category_id: Optional[int] = None
         query = query.order_by(Product.price.asc())
     elif sort == "price_desc":
         query = query.order_by(Product.price.desc())
-    return query.all()
+    products = query.all()
+    products_data = [ProductResponse.model_validate(p).model_dump(mode="json") for p in products]
+    redis_client.setex(cache_key, 60, json.dumps(products_data))
+    return products
+
 
 # GET /{product_id} — get one product (public)
 @router.get("/{product_id}", response_model=ProductResponse)
 def get_product(product_id: int, db: Session = Depends(get_db)):
+    cached_key = f"product:{product_id}"
+    cached = redis_client.get(cached_key)
+    if cached:
+        return json.loads(cached)
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    product_data = ProductResponse.model_validate(product).model_dump(mode="json")
+    redis_client.setex(cached_key, 60, json.dumps(product_data))
     return product
 
 # PUT /{product_id} — update a product (admin only)
@@ -65,6 +82,8 @@ def update_product(product: ProductUpdate, product_id: int, db: Session = Depend
         setattr(db_product, key, value)
     db.commit()
     db.refresh(db_product)
+    redis_client.delete(f"product:{product_id}")
+    redis_client.delete("products:search=None:category=None:sort=None") 
     return db_product   
 
 # DELETE /{product_id} — delete a product (admin only)
@@ -77,4 +96,6 @@ def delete_product(product_id: int, db: Session = Depends(get_db), current_user:
         raise HTTPException(status_code=404, detail="Product not found")
     db.delete(product)
     db.commit()
+    redis_client.delete(f"product:{product_id}")
+    redis_client.delete("products:search=None:category=None:sort=None")
     return product
